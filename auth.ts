@@ -4,25 +4,6 @@ import { PrismaAdapter } from '@auth/prisma-adapter';
 import { db } from './lib/db';
 import { getUserById } from './data/user';
 
-import { User } from '@auth/core/types';
-import { JWT } from '@auth/core/jwt';
-
-declare module '@auth/core/types' {
-  interface User {
-    // add your custom fields here
-  }
-
-  interface Session {
-    user: User;
-  }
-}
-
-declare module '@auth/core/jwt' {
-  interface JWT {
-    // add your custom fields here
-  }
-}
-
 export const {
   handlers: { GET, POST },
   auth,
@@ -30,7 +11,7 @@ export const {
   signOut,
 } = NextAuth({
   pages: {
-    signIn: '/auth/login',
+    signIn: '/auth/sign-in',
     error: '/auth/error',
   },
   events: {
@@ -42,6 +23,18 @@ export const {
     },
   },
   callbacks: {
+    async signIn({ user, account }) {
+      //allow OAuth without email verification
+      if (account?.provider !== 'credentials') return true;
+
+      const existingUser = await getUserById(user.id || '');
+
+      if (!existingUser?.emailVerified) return false;
+
+      //TODO: 2fa check
+
+      return true;
+    },
     async session({ token, session }) {
       console.log(session);
       if (token.sub && session.user) {
